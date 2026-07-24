@@ -153,6 +153,20 @@ class SeatSession:
         except Exception:
             return []
 
+    async def say(self, text: str) -> bool:
+        """Best-effort `POST {rpc_url}/chat` with `{"text": text}` and this seat's
+        own bearer — the send-side twin of `poll_chat`. Returns True on a 2xx,
+        False on any error (network hiccup, older gateway without the POST route,
+        no open http client). Never raises; the bearer is never logged."""
+        if self._http is None:
+            return False
+        try:
+            resp = await self._http.post(self._chat_url, json={"text": text})
+            resp.raise_for_status()
+            return True
+        except Exception:
+            return False
+
     async def close(self) -> None:
         """Close the underlying httpx client."""
         if self._http is not None:

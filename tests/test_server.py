@@ -31,6 +31,7 @@ class _FakeSeatSession:
         open_error: Exception | None = None,
         hang_on_open: bool = False,
         chat_batches: list[list[dict]] | None = None,
+        say_result: bool = True,
     ) -> None:
         self.agent_card_url = agent_card_url
         self.bearer = bearer
@@ -38,6 +39,8 @@ class _FakeSeatSession:
         self._open_error = open_error
         self._hang_on_open = hang_on_open
         self._chat_batches = list(chat_batches or [])
+        self.say_result = say_result
+        self.said: list[str] = []
         self.closed = False
 
     async def open(self) -> str:
@@ -54,6 +57,10 @@ class _FakeSeatSession:
         if self._chat_batches:
             return self._chat_batches.pop(0)
         return []
+
+    async def say(self, text: str) -> bool:
+        self.said.append(text)
+        return self.say_result
 
     async def close(self) -> None:
         self.closed = True
@@ -185,6 +192,41 @@ def test_poll_chat_formats_lines_and_advances_last_seq(monkeypatch):
     asyncio.run(_body())
 
 
+def test_raid_say_not_connected_returns_message():
+    async def _body():
+        out = await server.raid_say("hi")
+        assert "not connected" in out.lower()
+
+    asyncio.run(_body())
+
+
+def test_raid_say_forwards_to_session(monkeypatch):
+    fake = _install_fake(monkeypatch, prompts=["turn 1"], say_result=True)
+
+    async def _body():
+        await server.raid_connect(AGENT_CARD_URL, BEARER)
+        out = await server.raid_say("go water")
+        assert fake.said == ["go water"]
+        assert out == "sent"
+        assert BEARER not in out
+        await server.raid_leave()
+
+    asyncio.run(_body())
+
+
+def test_raid_say_reports_failure_without_leaking_bearer(monkeypatch):
+    _install_fake(monkeypatch, prompts=["turn 1"], say_result=False)
+
+    async def _body():
+        await server.raid_connect(AGENT_CARD_URL, BEARER)
+        out = await server.raid_say("go water")
+        assert "could not send" in out.lower()
+        assert BEARER not in out
+        await server.raid_leave()
+
+    asyncio.run(_body())
+
+
 def test_raid_poll_chat_before_connect_is_a_safe_no_op():
     async def _body():
         result = await server.raid_poll_chat()
@@ -305,6 +347,7 @@ def test_bearer_never_appears_in_any_tool_return_value(monkeypatch):
             await server.raid_play("1"),
             await server.raid_wait_turn(max_seconds=5),
             await server.raid_poll_chat(),
+            await server.raid_say("hi team"),
             await server.raid_status(),
             await server.raid_leave(),
         ]

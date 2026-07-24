@@ -164,6 +164,51 @@ def test_poll_chat_before_open_returns_empty_list():
     assert _run(session.poll_chat()) == []
 
 
+def test_say_posts_with_bearer_and_returns_true(monkeypatch):
+    task = _task("t1", "c1", TaskState.TASK_STATE_INPUT_REQUIRED, "prompt")
+    transport = _FakeTransport(resume_tasks=[], send_message_tasks=[task])
+    session = _session(transport)
+    _run(session.open())
+
+    posted = {}
+
+    class _FakeResponse:
+        def raise_for_status(self):
+            pass
+
+    async def _fake_post(url, json=None):
+        posted["url"] = url
+        posted["json"] = json
+        return _FakeResponse()
+
+    monkeypatch.setattr(session._http, "post", _fake_post)
+
+    ok = _run(session.say("hello party"))
+
+    assert ok is True
+    assert posted["url"] == session._chat_url
+    assert posted["json"] == {"text": "hello party"}
+
+
+def test_say_returns_false_on_any_error(monkeypatch):
+    task = _task("t1", "c1", TaskState.TASK_STATE_INPUT_REQUIRED, "prompt")
+    transport = _FakeTransport(resume_tasks=[], send_message_tasks=[task])
+    session = _session(transport)
+    _run(session.open())
+
+    async def _boom(url, json=None):
+        raise RuntimeError("net")
+
+    monkeypatch.setattr(session._http, "post", _boom)
+
+    assert _run(session.say("x")) is False
+
+
+def test_say_before_open_returns_false():
+    session = SeatSession(AGENT_CARD_URL, BEARER, _transport_factory=lambda: _FakeTransport())
+    assert _run(session.say("x")) is False
+
+
 def _run(coro):
     """Tiny asyncio runner so tests don't need pytest-asyncio configured."""
     import asyncio

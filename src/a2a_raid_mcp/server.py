@@ -12,6 +12,7 @@ of module-level state instead of blocking on the A2A call themselves:
                       pending prompt, and returns it once it does
     raid_play      -> hands a move to the driver and unblocks it
     raid_poll_chat -> best-effort peek at party chat since the last poll
+    raid_say       -> best-effort post of an outbound party-chat line
     raid_status    -> a quick snapshot of connection/turn/error state
     raid_leave     -> cancels the driver and closes the session
 
@@ -201,6 +202,19 @@ async def raid_poll_chat() -> str:
         lines.append(f"{item.get('seat', '?')}: {item.get('text', '')}")
     _last_seq = max_seq
     return "\n".join(lines)
+
+
+@mcp.tool()
+async def raid_say(message: str) -> str:
+    """Send a party-chat line to the raid at ANY time (not just on your turn).
+    Use this to relay what the human trainer wants to tell the team. The message
+    appears in every player's Room chat immediately. Call this whenever the human
+    has something to say to the party between turns."""
+    sess = _session  # the module-level active SeatSession (mirror raid_poll_chat)
+    if sess is None:
+        return "Not connected. Call raid_connect first."
+    ok = await sess.say(message)
+    return "sent" if ok else "could not send (try again)"
 
 
 @mcp.tool()
