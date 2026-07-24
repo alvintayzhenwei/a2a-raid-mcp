@@ -65,16 +65,24 @@ def _reset_state() -> None:
 async def _run_driver() -> None:
     """Drive the seat's whole A2A session in the background: open it, then loop
     reply-for-next-prompt until the task goes terminal. Each iteration blocks on
-    `_move_queue.get()` — i.e. on `raid_play` actually being called — so this
-    task only ever advances one human-in-the-loop move at a time."""
+    `queue.get()` — i.e. on `raid_play` actually being called — so this task
+    only ever advances one human-in-the-loop move at a time.
+
+    `session`/`queue` are bound as LOCALS from the module globals at the top of
+    this coroutine (not re-read from the globals on every loop iteration): if a
+    fresh `raid_connect` installs a NEW `_session`/`_move_queue` while this
+    (cancelled) task is still unwinding, a resumed step here must keep talking
+    to the session/queue IT was started with, never the new one."""
     global _pending_prompt, _done, _error
+    session = _session
+    queue = _move_queue
     try:
-        prompt = await _session.open()
+        prompt = await session.open()
         while prompt != DONE:
             _pending_prompt = prompt
             _prompt_event.set()
-            move = await _move_queue.get()
-            prompt = await _session.reply(move)
+            move = await queue.get()
+            prompt = await session.reply(move)
         _done = True
         _pending_prompt = None
         _prompt_event.set()
@@ -83,6 +91,27 @@ async def _run_driver() -> None:
     except Exception as e:  # noqa: BLE001 - surfaced to the caller as a plain string
         _error = f"{type(e).__name__}: {e}"
         _prompt_event.set()
+
+
+async def _teardown() -> None:
+    """Await-cancel the current driver task (if any) and close the current
+    session's httpx client (if any), then reset all module-level state to a
+    fresh, disconnected baseline. Shared by `raid_connect` (torn down BEFORE a
+    fresh connect replaces it — so a 2nd `raid_connect` without a `raid_leave`
+    in between never leaks the old session's httpx client or driver task) and
+    `raid_leave`."""
+    global _driver, _session
+    if _driver is not None:
+        _driver.cancel()
+        try:
+            await _driver
+        except asyncio.CancelledError:
+            pass
+        except Exception:  # noqa: BLE001 - the old driver's own error is irrelevant now
+            pass
+    if _session is not None:
+        await _session.close()
+    _reset_state()
 
 
 @mcp.tool()
@@ -96,7 +125,7 @@ async def raid_connect(agent_card_url: str, bearer: str) -> str:
     Card URL and `bearer` is the one-shot seat bearer, both from the game's
     "reserve a connect seat" response — neither is ever echoed back by this tool.
     """
-    _reset_state()
+    await _teardown()
     global _session, _driver
     _session = SeatSession(agent_card_url, bearer)
     _driver = asyncio.create_task(_run_driver())
@@ -117,7 +146,7 @@ async def raid_wait_turn(max_seconds: int = 30) -> str:
         return f"Error: {_error}"
     if _done:
         return "The game is over."
-    if _pending_prompt:
+    if _pending_prompt is not None:
         return _pending_prompt
 
     _prompt_event.clear()
@@ -130,7 +159,7 @@ async def raid_wait_turn(max_seconds: int = 30) -> str:
         return f"Error: {_error}"
     if _done:
         return "The game is over."
-    if _pending_prompt:
+    if _pending_prompt is not None:
         return _pending_prompt
     return "No turn yet — call raid_wait_turn again."
 
@@ -142,7 +171,7 @@ async def raid_play(move: str) -> str:
     choice — never invent a move yourself). Returns immediately; call
     raid_wait_turn again for the next turn."""
     global _pending_prompt
-    if not _pending_prompt:
+    if _pending_prompt is None:
         return "It's not your turn — call raid_wait_turn first."
     _pending_prompt = None
     _prompt_event.clear()
@@ -176,18 +205,7 @@ async def raid_poll_chat() -> str:
 async def raid_leave() -> str:
     """Leave the raid: cancel the background driver and close the session
     cleanly. Safe to call even if not connected."""
-    global _driver, _session
-    if _driver is not None:
-        _driver.cancel()
-        try:
-            await _driver
-        except asyncio.CancelledError:
-            pass
-        except Exception:  # noqa: BLE001 - the driver's own error is irrelevant now
-            pass
-    if _session is not None:
-        await _session.close()
-    _reset_state()
+    await _teardown()
     return "Left the raid."
 
 
@@ -201,7 +219,7 @@ async def raid_status() -> str:
         return f"Error: {_error}"
     if _done:
         return "Connected. The game is over."
-    if _pending_prompt:
+    if _pending_prompt is not None:
         return "Connected. Your turn is pending — call raid_wait_turn to see it."
     return "Connected. Waiting for your turn — call raid_wait_turn."
 

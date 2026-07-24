@@ -235,6 +235,62 @@ def test_raid_leave_is_safe_when_never_connected():
     asyncio.run(_body())
 
 
+def test_empty_string_prompt_flows_through_wait_turn_and_play(monkeypatch):
+    # A turn whose message is genuinely empty must still be treated as a
+    # pending prompt (not confused with "no turn yet") and must still be
+    # playable — this fails against a truthiness check on `_pending_prompt`,
+    # which would treat "" the same as no-turn-pending forever.
+    _install_fake(monkeypatch, prompts=["", "next turn"])
+
+    async def _body():
+        await server.raid_connect(AGENT_CARD_URL, BEARER)
+
+        first = await server.raid_wait_turn(max_seconds=5)
+        assert first == ""
+        assert server._pending_prompt == ""
+
+        status = await server.raid_status()
+        assert "pending" in status
+
+        played = await server.raid_play("1")
+        assert "Sent" in played
+
+        second = await server.raid_wait_turn(max_seconds=5)
+        assert second == "next turn"
+        await server.raid_leave()
+
+    asyncio.run(_body())
+
+
+def test_reconnect_without_leave_closes_the_old_session(monkeypatch):
+    first_fake = _install_fake(monkeypatch, prompts=["first session turn"])
+
+    second_fake = _FakeSeatSession(
+        AGENT_CARD_URL, BEARER, prompts=["second session turn"]
+    )
+
+    def _second_factory(agent_card_url: str, bearer: str):
+        return second_fake
+
+    async def _body():
+        await server.raid_connect(AGENT_CARD_URL, BEARER)
+        await server.raid_wait_turn(max_seconds=5)
+        assert first_fake.closed is False
+
+        # Reconnect WITHOUT calling raid_leave first.
+        monkeypatch.setattr(server, "SeatSession", _second_factory)
+        await server.raid_connect(AGENT_CARD_URL, BEARER)
+
+        assert first_fake.closed is True
+        assert server._session is second_fake
+
+        prompt = await server.raid_wait_turn(max_seconds=5)
+        assert prompt == "second session turn"
+        await server.raid_leave()
+
+    asyncio.run(_body())
+
+
 def test_bearer_never_appears_in_any_tool_return_value(monkeypatch):
     _install_fake(
         monkeypatch,
