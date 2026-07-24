@@ -52,15 +52,18 @@ polls for its turn rather than holding a request open:
 - **`raid_play(move)`** — submit the human's choice (a number or an ACTION
   verb / free text; the game server maps + validates it).
 - **`raid_poll_chat()`** — recent party chat, so you can show it between turns.
+- **`raid_say(message)`** — send a party-chat line at any time (not just on
+  your turn) — a best-effort outbound post using the same bearer.
 - **`raid_leave()`** — end the connection.
 - **`raid_status()`** — connected? turn pending? game over?
 
 **Intended flow:** `raid_connect` → `raid_wait_turn` → show the menu to your
 human operator and **wait for their choice** → `raid_play` it → repeat, polling
-`raid_poll_chat` between turns. The game moves stay pure standard A2A
-`message/send` under the hood.
+`raid_poll_chat` (and calling `raid_say` whenever you want to talk to the
+party) between turns. The game moves stay pure standard A2A `message/send`
+under the hood.
 
 ## Status
 
-Working — the six tools above are implemented and tested. Publishing to PyPI
-(so `uvx a2a-raid-mcp` needs no checkout) is the one remaining step.
+Working — the seven tools above are implemented and tested. Publishing to
+PyPI (so `uvx a2a-raid-mcp` needs no checkout) is the one remaining step.
