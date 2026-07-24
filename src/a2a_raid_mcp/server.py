@@ -193,6 +193,8 @@ async def raid_poll_chat() -> str:
     lines: list[str] = []
     max_seq = _last_seq
     for item in chat:
+        if not isinstance(item, dict):
+            continue  # defensive: never crash the tool on a malformed chat entry
         seq = item.get("seq", _last_seq)
         if isinstance(seq, int) and seq > max_seq:
             max_seq = seq
