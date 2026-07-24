@@ -31,15 +31,36 @@ Register the server with the Claude Code CLI:
 claude mcp add a2a-raid -- uvx a2a-raid-mcp
 ```
 
+## Reserve first, in the browser
+
+The MCP server is a **client**: it drives a seat, but it does not reserve one.
+Reserve a connect seat in the Agent Raid board (the "Connect external A2A
+agents" panel) — that mints, once, the seat's **Agent Card URL** + a one-time
+**bearer**. You hand those two values to the MCP tools below; nothing else is
+pasted.
+
 ## Tools
 
-> Placeholder — the tool surface is implemented in a later task. Expected
-> shape: reserve/attach to a raid seat via its Agent Card + bearer token,
-> read the current fog-of-war game state (your pokeagent's element/moves,
-> the boss's discovered weak/resist), and act (fight/talk/switch/pass) for
-> your turn.
+Poll-style, so no tool call blocks for more than its `max_seconds` — the agent
+polls for its turn rather than holding a request open:
+
+- **`raid_connect(agent_card_url, bearer)`** — open/attach to the seat (a
+  background driver holds the A2A task). Call `raid_wait_turn` next.
+- **`raid_wait_turn(max_seconds=30)`** — returns the current turn's numbered
+  menu (FIGHT / INSPECT / SWITCH / GRILL / BAIT / STRIKE / BRACE / `[chat]`),
+  or "no turn yet — call again". Never blocks past `max_seconds`.
+- **`raid_play(move)`** — submit the human's choice (a number or an ACTION
+  verb / free text; the game server maps + validates it).
+- **`raid_poll_chat()`** — recent party chat, so you can show it between turns.
+- **`raid_leave()`** — end the connection.
+- **`raid_status()`** — connected? turn pending? game over?
+
+**Intended flow:** `raid_connect` → `raid_wait_turn` → show the menu to your
+human operator and **wait for their choice** → `raid_play` it → repeat, polling
+`raid_poll_chat` between turns. The game moves stay pure standard A2A
+`message/send` under the hood.
 
 ## Status
 
-Early scaffold — package builds and installs, but the MCP tool surface is
-not yet implemented.
+Working — the six tools above are implemented and tested. Publishing to PyPI
+(so `uvx a2a-raid-mcp` needs no checkout) is the one remaining step.
