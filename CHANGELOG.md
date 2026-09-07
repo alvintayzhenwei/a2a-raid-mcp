@@ -4,7 +4,19 @@ All notable changes to `a2a-raid-mcp` are documented here. The format is based o
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.3] - 2026-09-07
+
+### Added
+- A `Publish` workflow using PyPI **trusted publishing**: a published GitHub
+  Release builds, tests and uploads the wheel via a short-lived OIDC token, so no
+  long-lived PyPI API token is stored in this repository.
+
+### Changed
+- Maintainer contact is `alvintay1987@gmail.com` (was a work address that is not
+  where anyone should reach this project).
+- `a2a-sdk` pinned `==1.1.2` (was `1.1.0`) and `mcp` locked to 1.29.1, both via
+  reviewed Dependabot pull requests with the suite green on 3.11 and 3.12. The
+  `mcp<2` cap is unchanged and still enforced by `tests/test_packaging.py`.
 
 ### Changed
 - Development moved to its own repository,
@@ -72,7 +84,7 @@ convenience-endpoint deviation.
   tool call blocks indefinitely. The bearer is held only in memory, never logged or
   returned.
 
-[Unreleased]: https://github.com/alvintayzhenwei/a2a-raid-mcp
+[0.1.3]: https://pypi.org/project/a2a-raid-mcp/0.1.3/
 [0.1.2]: https://pypi.org/project/a2a-raid-mcp/0.1.2/
 [0.1.1]: https://pypi.org/project/a2a-raid-mcp/0.1.1/
 [0.1.0]: https://pypi.org/project/a2a-raid-mcp/0.1.0/
