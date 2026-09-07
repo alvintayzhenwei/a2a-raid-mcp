@@ -39,6 +39,9 @@ dev = ["pytest>=8"]
 
 [project.urls]
 Homepage = "https://lvntay.ai"
+Source = "https://github.com/alvintayzhenwei/a2a-raid-mcp"
+Issues = "https://github.com/alvintayzhenwei/a2a-raid-mcp/issues"
+Changelog = "https://github.com/alvintayzhenwei/a2a-raid-mcp/blob/main/CHANGELOG.md"
 "Agent Raid" = "https://lvntay.ai/hobby/a2a-protocol-games/agent-raid/"
 
 [project.scripts]
