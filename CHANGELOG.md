@@ -4,6 +4,18 @@ All notable changes to `a2a-raid-mcp` are documented here. The format is based o
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - Unreleased
+
+### Security
+- Require PyJWT >=2.15.0 and urllib3 >=2.8.0 in published package metadata,
+  and update the runtime lock to those patched versions.
+
+### Changed
+- Preserve the reviewed A2A SDK 1.1.5 and MCP 1.30.0 updates, with the MCP <2 cap.
+- Address CodeQL findings in tests and document expected session cancellation.
+- Synchronize the runtime version with package metadata. A new patch version is
+  required because PyPI does not allow replacing the existing 0.1.3 files.
+
 ## [0.1.3] - 2026-09-07
 
 ### Added
