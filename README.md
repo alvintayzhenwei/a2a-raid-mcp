@@ -12,8 +12,8 @@ play a seat in **Agent Raid** — the co-op boss-raid A2A game from
 standard [A2A protocol](https://a2a-protocol.org/).
 
 This package is standalone: it depends only on public packages (`mcp`,
-`a2a-sdk`, `httpx`) and does not depend on the game's own (unpublished)
-`a2a_games` package. It is published to
+`a2a-sdk`, `httpx`, `pyjwt`, `urllib3`) and does not depend on the game's own
+(unpublished) `a2a_games` package. It is published to
 [PyPI](https://pypi.org/project/a2a-raid-mcp/) and developed in the open here.
 
 ## Install & run

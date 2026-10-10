@@ -160,7 +160,7 @@ def test_poll_chat_returns_empty_list_on_any_error(monkeypatch):
 
 
 def test_poll_chat_before_open_returns_empty_list():
-    session = SeatSession(AGENT_CARD_URL, BEARER, _transport_factory=lambda: _FakeTransport())
+    session = SeatSession(AGENT_CARD_URL, BEARER, _transport_factory=_FakeTransport)
     assert _run(session.poll_chat()) == []
 
 
@@ -205,7 +205,7 @@ def test_say_returns_false_on_any_error(monkeypatch):
 
 
 def test_say_before_open_returns_false():
-    session = SeatSession(AGENT_CARD_URL, BEARER, _transport_factory=lambda: _FakeTransport())
+    session = SeatSession(AGENT_CARD_URL, BEARER, _transport_factory=_FakeTransport)
     assert _run(session.say("x")) is False
 
 
